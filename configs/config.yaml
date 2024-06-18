@@ -1,0 +1,30 @@
+LOGGER: True
+SEED: 42
+DEBUG: False
+QUANT: False
+USE_PAST_KEY: True
+PRIVATE: True
+
+n_repetitions: 19 # Original notebook had 22 but times out :(
+TOTAL_TOKENS: 2048 # if PRIVATE else 512
+
+DEEP: True
+
+code: """Below is a math problem you are to solve (positive numerical answer):
+\"{}\"
+To accomplish this, first determine a sympy-based approach for solving the problem by listing each step to take and what functions need to be called in each step. Be clear so even an idiot can follow your instructions, and remember, your final answer should be positive integer, not an algebraic expression!
+Write the entire script covering all the steps (use comments and document it well) and print the result. After solving the problem, output the final numerical answer within \\boxed{}.
+
+Approach:"""
+
+
+cot: """Below is a math problem you are to solve (positive numerical answer!):
+\"{}\"Analyze this problem and think step by step to come to a solution with programs. After solving the problem, output the final numerical answer within \\boxed{}.\n\n"""
+
+tool_instruction: '\n\nPlease integrate natural language reasoning with programs to solve the above problem, and put your final numerical answer within \\boxed{}.\nNote that the intermediary calculations may be real numbers, but the final numercal answer would always be an integer.'
+
+
+temperature: 0.9
+top_p: 1.0
+
+
