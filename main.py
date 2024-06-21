@@ -10,6 +10,7 @@ from tqdm import tqdm
 import re
 import math
 import random
+
 from collections import defaultdict
 from collections import Counter
 
@@ -46,49 +47,48 @@ class StoppingCriteriaSub(StoppingCriteria):
         return False
         
 if __name__ == "__main__":
+    import aimo
+    env = aimo.make_env()
+    iter_test = env.iter_test()
+    # # Parse arguments
+    # arg_parser = argparse.ArgumentParser()
+    # arg_parser.add_argument("-c", "--config", default="./configs/config.yaml",
+    #                         help="the config file to be used to run the experiment")
+    # arg_parser.add_argument("--verbose", action='store_true', help="Log also to stdout")
+
+    # args = arg_parser.parse_args()
+
 
     
     LOGGER=True
+    log_fn = 'log.txt'
+    if os.path.exists(log_fn):
+        os.remove(log_fn)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    # Create a file handler
+    file_handler = logging.FileHandler(log_fn)
+    file_handler.setLevel(logging.INFO)
+    # Create a stream handler
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
 
-    if LOGGER:
-        log_fn = 'log.txt'
-        if os.path.exists(log_fn):
-            os.remove(log_fn)
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
-        # Create a file handler
-        file_handler = logging.FileHandler(log_fn)
-        file_handler.setLevel(logging.INFO)
-        # Create a stream handler
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
+    # Add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
 
-        # Add the handlers to the logger
-        logger.addHandler(file_handler)
-        logger.addHandler(stream_handler)
 
-    # Parse arguments
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-c", "--config", default="./configs/config.yaml",
-                            help="the config file to be used to run the experiment")
-    arg_parser.add_argument("--verbose", action='store_true', help="Log also to stdout")
-
-    args = arg_parser.parse_args()
-    
+    config_fn = './configs/config.yaml'
     # check if the config files exists
-    if not os.path.exists(args.config):
-        logging.info("Config file does not exist: {}".format(args.config))
+    if not os.path.exists(config_fn):
+        logging.info("Config file does not exist: {}".format(config_fn))
         raise SystemExit
     
     # Munchify the dict to access entries with both dot notation and ['name']
     logging.info(f'Loading the config file...')
-    config = yaml.load(open(args.config, "r", encoding='utf-8'), yaml.FullLoader, )
+    config = yaml.load(open(config_fn, "r", encoding='utf-8'), yaml.FullLoader)
     config = munchify(config)
     
-
-    import aimo
-    env = aimo.make_env()
-    iter_test = env.iter_test()
 
 
     import transformers
@@ -113,10 +113,6 @@ if __name__ == "__main__":
 
     torch.cuda.empty_cache()
     gc.collect()
-
-
-
-
     
     n_repetitions = config.n_repetitions # Original notebook had 22 but times out :(
     TOTAL_TOKENS = config.TOTAL_TOKENS # if PRIVATE else 512
@@ -124,7 +120,7 @@ if __name__ == "__main__":
     if PRIVATE:
         TIME_LIMIT = 31500
     else:
-        TIME_LIMIT = 31500 # ORIGIN 1
+        TIME_LIMIT = 1 # ORIGIN 1
 
 
 
@@ -217,13 +213,19 @@ if __name__ == "__main__":
         logging.info(model.dtype, model.hf_device_map)
 
 
-    code = config.code
+    code =  """Below is a math problem you are to solve (positive numerical answer):
+            \"{}\"
+            To accomplish this, first determine a sympy-based approach for solving the problem by listing each step to take and what functions need to be called in each step. Be clear so even an idiot can follow your instructions, and remember, your final answer should be positive integer, not an algebraic expression!
+            Write the entire script covering all the steps (use comments and document it well) and print the result. After solving the problem, output the final numerical answer within \\boxed{}.
+
+            Approach:"""
 
 
-    cot = config.cot
+    cot = """Below is a math problem you are to solve (positive numerical answer!):
+        \"{}\"Analyze this problem and think step by step to come to a solution with programs. After solving the problem, output the final numerical answer within \\boxed{}.\n\n"""
     promplt_options = [code,cot]
 
-    tool_instruction = config.tool_instruction
+    tool_instruction = '\n\nPlease integrate natural language reasoning with programs to solve the above problem, and put your final numerical answer within \\boxed{}.\nNote that the intermediary calculations may be real numbers, but the final numercal answer would always be an integer.'
 
 
     temperature = config.temperature
@@ -240,6 +242,7 @@ if __name__ == "__main__":
     question_type_counts = {}
     starting_counts = (2,3)
         
+
     # LEWIS: I had to invert the loop order because the new API forbids repeated calls on the same problem
     for i, (test, sample_submission) in tqdm(enumerate(iter_test)):
         logging.info(f"Solving problem {i} ...")
